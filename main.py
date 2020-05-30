@@ -1,5 +1,5 @@
-import sys
-sys.path.insert(1, 'flare')
+# import sys
+# sys.path.insert(1, 'flare') #if the PYTHONPATH variable is not set
 import torch.optim as optim
 import torch
 import torch.nn.utils.prune as prune
