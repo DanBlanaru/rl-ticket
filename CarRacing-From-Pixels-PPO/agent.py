@@ -15,7 +15,7 @@ transition = np.dtype([('s', np.float64, (img_stack, 96, 96)),
 
 GAMMA=0.99
 EPOCH= 8 # beter than 10
-MAX_SIZE = 2000 ## CUDA out of mem for max_size=10000
+MAX_SIZE = 1280 ## CUDA out of mem for max_size=10000
 BATCH=128 
 EPS=0.1
 LEARNING_RATE = 0.001 # bettr than 0.005 or 0.002 
@@ -30,7 +30,7 @@ class Agent():
         self.counter = 0
         self.device = device
         
-        self.optimizer = optim.Adam(self.net.parameters(), lr=LEARNING_RATE)  ## lr=1e-3
+        self.optimizer = optim.Adam(self.net.parameters(), lr=LEARNING_RATE, weight_decay = 0.0003)  ## lr=1e-3
 
     def select_action(self, state):
         state = torch.from_numpy(state).double().to(self.device).unsqueeze(0)

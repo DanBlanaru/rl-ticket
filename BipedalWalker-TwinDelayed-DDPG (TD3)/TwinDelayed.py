@@ -144,10 +144,12 @@ class TD3(object):
             target_Q1, target_Q2 = self.critic_target(next_state, next_action)
             target_Q = torch.min(target_Q1, target_Q2)
             target_Q = reward + (done * discount * target_Q).detach()
-
+            print(reward.shape)
+            print(done.shape)
+            print(target_Q.shape)
             # Get current Q estimates
             current_Q1, current_Q2 = self.critic(state, action)
-
+    
             # Compute critic loss
             critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(current_Q2, target_Q) 
 
