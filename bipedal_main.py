@@ -6,8 +6,7 @@ import numpy as np
 from collections import deque
 import matplotlib.pyplot as plt
 
-
-from  collections  import deque
+from collections import deque
 import time
 from model import Policy
 from ppo import ppo_agent
@@ -17,13 +16,11 @@ from envs import make_vec_envs
 from parallelEnv import parallelEnv
 import matplotlib.pyplot as plt
 
-
 print('gym version: ', gym.__version__)
 print('torch version: ', torch.__version__)
 
 seed = 0
-gamma=0.99
-num_processes=3
+num_processes = 3
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print('device: ', device)
 
@@ -42,21 +39,48 @@ torch.manual_seed(seed)
 torch.cuda.manual_seed(seed)
 np.random.seed(seed)
 
+env_params = {
+    "name": "BipedalWalker-v3",
+    "discrete": False,
+    "pixel": False
+}
 
-
+hyperparams = {
+    "seed": 0,
+    "num_processes": 8,
+    "ppo_epoch": 16,
+    "num_mini_batch": 16,
+    "lr": 0.001,
+    "eps": 1e-5,
+    "max_grad_norm": 0.5,
+    "weight_decay": 0.001,
+    "base_kwargs": {"recurrent": False}
+}
+t_hyperparams = {
+    "num_updates": 1000000,
+    "tau" : 0.95,
+    "save_interval": 30,
+    "log_interval":1,
+    "gamma": .99,
+}
+num_updates = 1000000
+gamma = 0.99
+tau = 0.95
+save_interval = 30
+log_interval = 1
 
 ## model Policy uses MLPBase
-policy = Policy(envs.observation_space.shape, envs.action_space,False,\
-        base_kwargs={'recurrent': False})
+policy = Policy(envs.observation_space.shape, envs.action_space, False, \
+                base_kwargs={'recurrent': False})
 print(policy)
 # prune.ln_structured(policy.base.actor[2], name = "weight", amount = .1, n =1, dim = 0)
 policy.to(device)
-agent = ppo_agent(actor_critic=policy, ppo_epoch=16, num_mini_batch=16,\
-                lr=0.001, eps=1e-5, max_grad_norm=0.5)
+agent = ppo_agent(actor_critic=policy, ppo_epoch=hyperparams["ppo_epoch"], num_mini_batch=hyperparams["num_mini_batch"], \
+                  lr=hyperparams["eps"], eps=hyperparams["eps"], max_grad_norm=hyperparams["max_grad_norm"])
 
 rollouts = RolloutStorage(num_steps=max_steps, num_processes=num_processes, \
-                        obs_shape=envs.observation_space.shape, action_space=envs.action_space, \
-                        recurrent_hidden_state_size=policy.recurrent_hidden_state_size)
+                          obs_shape=envs.observation_space.shape, action_space=envs.action_space, \
+                          recurrent_hidden_state_size=policy.recurrent_hidden_state_size)
 
 obs = envs.reset()
 print('type obs: ', type(obs), ', shape obs: ', obs.shape)
@@ -90,11 +114,6 @@ def return_suffix(j):
     return suf
 
 
-num_updates = 1000000
-gamma = 0.99
-tau = 0.95
-save_interval = 30
-log_interval = 1
 
 
 def ppo_vec_env_train(envs, agent, policy, num_processes, num_steps, rollouts):
@@ -185,5 +204,6 @@ Interval: {:02}:{:02}' \
             break
 
     return scores_array, avg_scores_array
+
 
 scores, avg_scores = ppo_vec_env_train(envs, agent, policy, num_processes, max_steps, rollouts)
