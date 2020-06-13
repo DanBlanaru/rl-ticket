@@ -11,13 +11,13 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, action_space, discrete=False, base_kwargs=None):
+    def __init__(self, obs_shape, action_space, discrete=False, hidden_base_size = 64, base_kwargs=None):
         super(Policy, self).__init__()
         if base_kwargs is None:
             base_kwargs = {}
 
         if len(obs_shape) == 1:
-            self.base = MLPBase(obs_shape[0], **base_kwargs)
+            self.base = MLPBase(obs_shape[0], hidden_size=hidden_base_size, **base_kwargs)
         else:
             raise NotImplementedError
 

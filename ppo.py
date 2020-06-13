@@ -12,7 +12,8 @@ class ppo_agent():
                  num_mini_batch,
                  lr=None,
                  eps=None,
-                 max_grad_norm=None):
+                 max_grad_norm=None,
+                 weight_decay=0):
 
         self.actor_critic = actor_critic
 
@@ -20,9 +21,9 @@ class ppo_agent():
         self.num_mini_batch = num_mini_batch
 
         self.max_grad_norm = max_grad_norm
-        self.MSELoss = nn.MSELoss()
 
-        self.optimizer = optim.Adam(actor_critic.parameters(), lr=lr, eps=eps)
+
+        self.optimizer = optim.Adam(actor_critic.parameters(), lr=lr, eps=eps, weight_decay= weight_decay)
 
     def update(self, rollouts):
         advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]

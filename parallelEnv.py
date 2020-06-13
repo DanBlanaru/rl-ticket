@@ -9,6 +9,7 @@ from multiprocessing import Process, Pipe
 from abc import ABC, abstractmethod
 from init_vec_env import VecEnvWrapper
 
+
 class CloudpickleWrapper(object):
     """
     Uses cloudpickle to serialize contents (otherwise multiprocessing tries to use pickle)
@@ -24,6 +25,7 @@ class CloudpickleWrapper(object):
     def __setstate__(self, ob):
         import pickle
         self.x = pickle.loads(ob)
+
 
 class VecEnv(ABC):
     """
@@ -86,9 +88,9 @@ class VecEnv(ABC):
         return self.step_wait()
 
     def render(self, mode='human'):
-        #logger.warn('Render not defined for %s' % self)
+        # logger.warn('Render not defined for %s' % self)
         pass
-        
+
     @property
     def unwrapped(self):
         if isinstance(self, VecEnvWrapper):
@@ -123,16 +125,16 @@ def worker(remote, parent_remote, env_fn_wrapper):
 
 
 class parallelEnv(VecEnv):
-    def __init__(self, env_name='BipedalWalker-v2',n=4, seed=None,spaces=None):
+    def __init__(self, env_name='BipedalWalker-v2', n=4, seed=None, spaces=None):
 
-        self.env_fns = [ gym.make(env_name) for _ in range(n) ]
+        self.env_fns = [gym.make(env_name) for _ in range(n)]
 
         if seed is not None:
-            for i,e in enumerate(self.env_fns):
-                e.seed(i+seed)
-                
-        self.max_steps = self.env_fns[0]._max_episode_steps        
-        
+            for i, e in enumerate(self.env_fns):
+                e.seed(i + seed)
+
+        self.max_steps = self.env_fns[0]._max_episode_steps
+
         """
         envs: list of gym environments to run in subprocesses
         adopted from openai baseline
@@ -142,9 +144,9 @@ class parallelEnv(VecEnv):
         nenvs = len(self.env_fns)
         self.remotes, self.work_remotes = zip(*[Pipe() for _ in range(nenvs)])
         self.ps = [Process(target=worker, args=(work_remote, remote, CloudpickleWrapper(env_fn)))
-            for (work_remote, remote, env_fn) in zip(self.work_remotes, self.remotes, self.env_fns)]
+                   for (work_remote, remote, env_fn) in zip(self.work_remotes, self.remotes, self.env_fns)]
         for p in self.ps:
-            p.daemon = True # if the main process crashes, we should not cause things to hang
+            p.daemon = True  # if the main process crashes, we should not cause things to hang
             p.start()
         for remote in self.work_remotes:
             remote.close()
@@ -164,6 +166,15 @@ class parallelEnv(VecEnv):
         obs, rews, dones, infos = zip(*results)
         return np.stack(obs), np.stack(rews), np.stack(dones), infos
 
+    # def reset(self, done=None):
+    #     if done is None:
+    #         for remote in self.remotes:
+    #             remote.send(('reset',None))
+    #     else:
+    #         for remote, is_done in zip(self.remotes, done):
+    #             if is_done:
+    #                 remote.send(('reset', None))
+    #     return np.stack([remote.recv() for remote in self.remotes])
     def reset(self):
         for remote in self.remotes:
             remote.send(('reset', None))
@@ -178,13 +189,13 @@ class parallelEnv(VecEnv):
         if self.closed:
             return
         if self.waiting:
-            for remote in self.remotes:            
+            for remote in self.remotes:
                 remote.recv()
         for remote in self.remotes:
             remote.send(('close', None))
         for p in self.ps:
             p.join()
-        self.closed = True\
+        self.closed = True
 
     def sample(self):
         return self.env_fns[0].action_space.sample()
