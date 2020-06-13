@@ -2,7 +2,10 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/baselines" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/flare" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/flare_main" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/pytorch-a2c-ppo-acktr-gail" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/pytorch-a2c-ppo-acktr-gail/baselines" vcs="Git" />
   </component>
 </project>
