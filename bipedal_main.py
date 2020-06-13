@@ -48,6 +48,8 @@ env_params = {
 hyperparams = {
     "seed": 0,
     "num_processes": 8,
+}
+p_hyperparams = {
     "ppo_epoch": 16,
     "num_mini_batch": 16,
     "lr": 0.001,
@@ -69,14 +71,14 @@ tau = 0.95
 save_interval = 30
 log_interval = 1
 
-## model Policy uses MLPBase
+
 policy = Policy(envs.observation_space.shape, envs.action_space, False, \
                 base_kwargs={'recurrent': False})
 print(policy)
 # prune.ln_structured(policy.base.actor[2], name = "weight", amount = .1, n =1, dim = 0)
 policy.to(device)
-agent = ppo_agent(actor_critic=policy, ppo_epoch=hyperparams["ppo_epoch"], num_mini_batch=hyperparams["num_mini_batch"], \
-                  lr=hyperparams["eps"], eps=hyperparams["eps"], max_grad_norm=hyperparams["max_grad_norm"])
+agent = ppo_agent(actor_critic=policy, ppo_epoch=p_hyperparams["ppo_epoch"], num_mini_batch=p_hyperparams["num_mini_batch"], \
+                  lr=p_hyperparams["eps"], eps=p_hyperparams["eps"], max_grad_norm=p_hyperparams["max_grad_norm"])
 
 rollouts = RolloutStorage(num_steps=max_steps, num_processes=num_processes, \
                           obs_shape=envs.observation_space.shape, action_space=envs.action_space, \
