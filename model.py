@@ -4,6 +4,7 @@ import torch.nn as nn
 from distributions import DiagGaussian
 from utils import init, init_normc_
 
+
 class Flatten(nn.Module):
     def forward(self, x):
         return x.view(x.size(0), -1)
@@ -22,7 +23,7 @@ class Policy(nn.Module):
 
         num_outputs = action_space.shape[0]
         self.dist = DiagGaussian(self.base.output_size, num_outputs)
-        
+
     @property
     def is_recurrent(self):
         return self.base.is_recurrent
@@ -32,8 +33,8 @@ class Policy(nn.Module):
         """Size of rnn_hx."""
         return self.base.recurrent_hidden_state_size
 
-    def forward(self, inputs, rnn_hxs, masks):
-        raise NotImplementedError
+    def forward(self, inputs, rnn_hxs=0, masks=0):
+        return self.act(inputs, rnn_hxs, masks)
 
     def act(self, inputs, rnn_hxs, masks, deterministic=False):
         value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
@@ -119,14 +120,6 @@ class NNBase(nn.Module):
         return x, hxs
 
 
-class Print(nn.Module):
-    def __init__(self):
-        super(Print, self).__init__()
-
-    def forward(self, x):
-        print('layer input:', x.shape)
-        return x
-
 class MLPBase(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=64):
         super(MLPBase, self).__init__(recurrent, num_inputs, hidden_size)
@@ -135,8 +128,8 @@ class MLPBase(NNBase):
             num_inputs = hidden_size
 
         init_ = lambda m: init(m,
-            init_normc_,
-            lambda x: nn.init.constant_(x, 0))
+                               init_normc_,
+                               lambda x: nn.init.constant_(x, 0))
 
         self.actor = nn.Sequential(
             init_(nn.Linear(num_inputs, hidden_size)),
