@@ -184,4 +184,7 @@ class parallelEnv(VecEnv):
             remote.send(('close', None))
         for p in self.ps:
             p.join()
-        self.closed = True
+        self.closed = True\
+
+    def sample(self):
+        return self.env_fns[0].action_space.sample()

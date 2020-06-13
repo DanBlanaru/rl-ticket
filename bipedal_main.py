@@ -23,7 +23,7 @@ print('torch version: ', torch.__version__)
 
 seed = 0
 gamma=0.99
-num_processes=1
+num_processes=3
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print('device: ', device)
 
@@ -46,7 +46,7 @@ np.random.seed(seed)
 
 
 ## model Policy uses MLPBase
-policy = Policy(envs.observation_space.shape, envs.action_space,\
+policy = Policy(envs.observation_space.shape, envs.action_space,False,\
         base_kwargs={'recurrent': False})
 print(policy)
 # prune.ln_structured(policy.base.actor[2], name = "weight", amount = .1, n =1, dim = 0)
@@ -105,8 +105,9 @@ def ppo_vec_env_train(envs, agent, policy, num_processes, num_steps, rollouts):
 
     # start all parallel agents
     print('Number of agents: ', n)
-    envs.step([[1] * 4] * n)
+    # envs.step([[1] * 4] * n)
 
+    envs.step([envs.sample()] * n)
     indices = []
     for i in range(n):
         indices.append(i)
@@ -129,8 +130,8 @@ def ppo_vec_env_train(envs, agent, policy, num_processes, num_steps, rollouts):
                         rollouts.obs[timestep],
                         rollouts.recurrent_hidden_states[timestep],
                         rollouts.masks[timestep])
-
-            obs, rewards, done, infos = envs.step(actions.cpu().detach().numpy())
+            # print(actions.cpu().detach().numpy().s)
+            obs, rewards, done, infos = envs.step(actions.cpu().detach().numpy().squeeze())
 
             total_reward += rewards  ## this is the list by agents
 

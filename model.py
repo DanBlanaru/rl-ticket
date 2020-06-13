@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from distributions import DiagGaussian
+from distributions import DiagGaussian,Categorical
 from utils import init, init_normc_
 
 
@@ -11,7 +11,7 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, action_space, base_kwargs=None):
+    def __init__(self, obs_shape, action_space, discrete=False, base_kwargs=None):
         super(Policy, self).__init__()
         if base_kwargs is None:
             base_kwargs = {}
@@ -21,8 +21,17 @@ class Policy(nn.Module):
         else:
             raise NotImplementedError
 
-        num_outputs = action_space.shape[0]
-        self.dist = DiagGaussian(self.base.output_size, num_outputs)
+        # if type(action_space) is int:
+        #     num_outputs = action_space.n
+        # else:
+        #     num_outputs = action_space.shape[0]
+
+        if discrete:
+            num_outputs = action_space.n
+            self.dist = Categorical(self.base.output_size,num_outputs)
+        else:
+            num_outputs = action_space.shape[0]
+            self.dist = DiagGaussian(self.base.output_size, num_outputs)
 
     @property
     def is_recurrent(self):
@@ -142,10 +151,11 @@ class MLPBase(NNBase):
             init_(nn.Linear(num_inputs, hidden_size)),
             nn.Tanh(),
             init_(nn.Linear(hidden_size, hidden_size)),
-            nn.Tanh()
+            nn.Tanh(),
+            init_(nn.Linear(hidden_size, 1))
         )
 
-        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+        # self.critic_linear = init_(nn.Linear(hidden_size, 1))
 
         self.train()
 
@@ -158,4 +168,4 @@ class MLPBase(NNBase):
         hidden_critic = self.critic(x)
         hidden_actor = self.actor(x)
 
-        return self.critic_linear(hidden_critic), hidden_actor, rnn_hxs
+        return (hidden_critic), hidden_actor, rnn_hxs
