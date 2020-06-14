@@ -76,7 +76,10 @@ def main():
         return actor_critic, agent, rollouts
 
     actor_critic, agent, rollouts = init_alg()
+    print(actor_critic)
 
+    print(actor_critic.num_params)
+    quit()
     # print(actor_critic)
     # quit()
     # if args.algo == 'a2c':
@@ -219,12 +222,12 @@ def main():
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
             total_num_steps = (j + 1) * args.num_processes * args.num_steps
             end_time = time.time()
-            s = end_time - start_time
+            s_total = end_time - abs_start
             print(
-                "Updates(epochs) {}, num timesteps {}, elapsed {:02}{:02}{:02.2f} epoch seconds {} \n Last {} training episodes: "
+                "Updates(epochs) {}, num timesteps {}, elapsed {:01}:{:02}:{:02.2f} epoch seconds {} \n Last {} training episodes: "
                 "mean/median reward {:.1f}/{:.1f},min/max reward {:.1f}/{:.1f}\n "
                     .format(j, total_num_steps,
-                            s//3600, s%3600//60, s%60,
+                            int(s_total//3600), int(s_total%3600//60), s_total%60,
                             end_time - start_time, len(episode_rewards),
                             np.mean(episode_rewards), np.median(episode_rewards),
                             np.min(episode_rewards), np.max(episode_rewards),
@@ -245,7 +248,7 @@ def main():
             torch.save([actor_critic, getattr(utils.get_vec_normalize(envs), 'ob_rms', None)], save_path)
             print("-------Saved at path {}-------\n".format(save_path))
             # print(save_path+"it_{}_log.json")
-            with open(save_path+"it_{}_log.json".format(j),"w") as file:
+            with open(save_dir+"it_{}_log.json".format(j),"w") as file:
                 json.dump(log_dict,file)
 
         if args.convergence_its != 0:
@@ -278,3 +281,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+

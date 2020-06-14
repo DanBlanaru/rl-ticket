@@ -2,7 +2,7 @@ import argparse
 import os
 # workaround to unpickle olf model files
 import sys
-
+import re
 import numpy as np
 import torch
 
@@ -32,7 +32,34 @@ parser.add_argument(
     action='store_true',
     default=False,
     help='whether to use a non-deterministic policy')
+parser.add_argument(
+    '--detect-path',
+    default = None,
+    help='detect the best policy from a dir by its pathname'
+)
 args = parser.parse_args()
+
+def detect_best_path(save_dir):
+    number_finder = re.compile('([-+]?\d*[.,]?\d)')
+    best_avg = -1e8
+    best_path = None
+    for filename in os.listdir(save_dir):
+        basename, extention = os.path.splitext(filename)
+        if extention != ".pth":
+            continue
+        avg = float(number_finder.findall(basename)[-1])
+
+        if avg > best_avg:
+            best_avg = avg
+            print(filename)
+            best_path = filename
+    print("Best path is:" + filename)
+    assert(best_path is not None)
+    return save_dir+best_path
+
+        
+
+
 
 args.det = not args.non_det
 
@@ -49,8 +76,13 @@ env = make_vec_envs(
 render_func = get_render_func(env)
 
 # We need to use the same statistics for normalization as used in training
+if args.detect_path:
+    load_dir = detect_best_path(args.detect_path)
+else:
+    load_dir = args.load_dir
+
 actor_critic, ob_rms = \
-            torch.load(os.path.join(args.load_dir))
+            torch.load(os.path.join(load_dir))
 
 vec_norm = get_vec_normalize(env)
 if vec_norm is not None:

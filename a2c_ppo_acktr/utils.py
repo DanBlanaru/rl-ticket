@@ -100,5 +100,5 @@ def default_save_init(log_dir, save_dir, pruning=False):
 def default_args_init(log_dir, args):
     args_file = ("pruning_" if args.pruning else "") + "args.json"
     with open(log_dir + args_file, 'w')  as file:
-        json.dump(vars(args), file)
+        json.dump(vars(args), file,indent = 4, sort_keys = True)
     return log_dir + args_file
