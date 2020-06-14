@@ -1,5 +1,6 @@
 import glob
 import os
+import json
 
 import torch
 import torch.nn as nn
@@ -63,3 +64,41 @@ def cleanup_log_dir(log_dir):
         files = glob.glob(os.path.join(log_dir, '*.monitor.csv'))
         for f in files:
             os.remove(f)
+
+
+def experiment_number(log_dir):
+    try:
+        return len([name for name in os.listdir(log_dir)])
+    except OSError:
+        os.makedirs(log_dir)
+        return 0
+
+
+def default_log_init(log_dir, env_name):
+    if log_dir is not None:
+        if os.path.exists(log_dir):
+            return log_dir
+        os.makedirs(log_dir)
+        return log_dir
+    else:
+        log_dir = "experiments/" + env_name + '/'
+        exp_nr = experiment_number(log_dir)
+        log_dir = log_dir + str(exp_nr) + "/"
+        os.makedirs(log_dir)
+        return log_dir
+
+
+def default_save_init(log_dir, save_dir, pruning=False):
+    if save_dir is not None:
+        save_dir = save_dir
+    else:
+        save_dir = log_dir + "nets/"
+    os.makedirs(save_dir)
+    return save_dir
+
+
+def default_args_init(log_dir, args):
+    args_file = ("pruning_" if args.pruning else "") + "args.json"
+    with open(log_dir + args_file, 'w')  as file:
+        json.dump(vars(args), file)
+    return log_dir + args_file

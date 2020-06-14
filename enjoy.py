@@ -50,7 +50,7 @@ render_func = get_render_func(env)
 
 # We need to use the same statistics for normalization as used in training
 actor_critic, ob_rms = \
-            torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
+            torch.load(os.path.join(args.load_dir))
 
 vec_norm = get_vec_normalize(env)
 if vec_norm is not None:
@@ -84,11 +84,11 @@ while True:
     # Obser reward and next obs
     obs, reward, done, _ = env.step(action)
     total_reward += reward
-    rews.append(reward)
+    # rews.append(reward)
     if done:
         env.reset()
         print("Env done with reward%f"%total_reward)
-        print("len: %f, mean: %f\n"%(len(rews), np.mean(rews)))
+        # print("len: %f, mean: %f\n"%(len(rews), np.mean(rews)))
         total_reward = 0
     masks.fill_(0.0 if done else 1.0)
 

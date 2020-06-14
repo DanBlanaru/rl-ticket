@@ -86,8 +86,8 @@ def get_args():
     parser.add_argument(
         '--num-steps',
         type=int,
-        default=5,
-        help='number of forward steps in A2C (default: 5)')
+        default=128,
+        help='number of steps in a rollout')
     parser.add_argument(
         '--ppo-epoch',
         type=int,
@@ -121,19 +121,19 @@ def get_args():
     parser.add_argument(
         '--num-env-steps',
         type=int,
-        default=10e6,
-        help='number of environment steps to train (default: 10e6)')
+        default=1e7,
+        help='number of environment steps to train (default: 1e7)')
     parser.add_argument(
         '--env-name',
         default='PongNoFrameskip-v4',
         help='environment to train on (default: PongNoFrameskip-v4)')
     parser.add_argument(
         '--log-dir',
-        default='/tmp/gym/',
+        default=None,
         help='directory to save agent logs (default: /tmp/gym)')
     parser.add_argument(
         '--save-dir',
-        default='./trained_models/',
+        default= None,
         help='directory to save agent logs (default: ./trained_models/)')
     parser.add_argument(
         '--no-cuda',
@@ -166,13 +166,32 @@ def get_args():
         type=int,
         default=100,
         help='how many timesteps to show statistics over')
-    args = parser.parse_args()
     parser.add_argument(
         '--convergence-its',
         type=int,
-        default=100,
+        default=0,
         help='if average not improved after so many iterations, stop'
     )
+    # parser.add_argument(
+    #     "--min-solve",
+    #     type = float,
+    #     default = 1e9,
+    #     help = 'minimum score for environment to be considered solved'
+    # )
+    # parser.add_argument(
+    #     '--check-solve',
+    #     action="store_false",
+    #     default = False,
+    #     help = "check if "
+    # )
+    parser.add_argument(
+        '--pruning',
+        action='store_true',
+        default=False,
+        help='if to use pruning'
+    )
+    args = parser.parse_args()
+
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
 

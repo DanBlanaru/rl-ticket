@@ -6,6 +6,7 @@
     <mapping directory="$PROJECT_DIR$/baselines-m" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/flare" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/flare_main" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/old/baselines-m" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/pytorch-a2c-ppo-acktr-gail" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/pytorch-a2c-ppo-acktr-gail/baselines" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/pytorch-a2c-ppo-acktr-gail/baselines-m" vcs="Git" />
