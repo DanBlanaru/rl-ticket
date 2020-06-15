@@ -79,9 +79,7 @@ def main():
     print(actor_critic)
 
     print(actor_critic.num_params)
-    quit()
-    # print(actor_critic)
-    # quit()
+
     # if args.algo == 'a2c':
     #     agent = algo.A2C_ACKTR(
     #         actor_critic,

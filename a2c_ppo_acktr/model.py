@@ -15,7 +15,6 @@ class Flatten(nn.Module):
 class Policy(nn.Module):
     def __init__(self, obs_shape, action_space, base=None, base_kwargs=None):
         super(Policy, self).__init__()
-        self.pruned = False
         if base_kwargs is None:
             base_kwargs = {}
         if base is None:
