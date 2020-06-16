@@ -55,7 +55,7 @@ def detect_best_path(save_dir):
             best_path = filename
     print("Best path is:" + filename)
     assert(best_path is not None)
-    return save_dir+best_path
+    return os.path.join(save_dir,best_path)
 
         
 

@@ -2,6 +2,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.nn.utils.prune as prune
+import warnings
+warnings.simplefilter("ignore")
 
 from a2c_ppo_acktr.distributions import Bernoulli, Categorical, DiagGaussian
 from a2c_ppo_acktr.utils import init
@@ -233,3 +236,13 @@ class MLPBase(NNBase):
         hidden_actor = self.actor(x)
 
         return self.critic_linear(hidden_critic), hidden_actor, rnn_hxs
+
+    def prune_critic(self, ratios, dims):
+        if len(ratios) != 3:
+            raise ValueError("length of ratios not matching critic number of layers")
+        if len(dims) != 3:
+            raise ValueError("length of ratios not matching critic number of layers")
+        prune.ln_structured(self.critic[0], "weight", amount=ratios[0], n=1, dim=dims[0])
+        prune.ln_structured(self.critic[2], 'weight', amount=ratios[1], n=1, dim=dims[1])
+        prune.ln_structured(self.critic_linear, "weight", amount=ratios[2], n=2, dim=dims[2])
+

@@ -6,7 +6,7 @@ from a2c_ppo_acktr.envs import make_vec_envs
 
 
 def evaluate(actor_critic, ob_rms, env_name, seed, num_processes, eval_log_dir,
-             device):
+             device, discrete=False, nr_episodes=10):
     eval_envs = make_vec_envs(env_name, seed + num_processes, num_processes,
                               None, eval_log_dir, device, True)
 
@@ -22,7 +22,7 @@ def evaluate(actor_critic, ob_rms, env_name, seed, num_processes, eval_log_dir,
         num_processes, actor_critic.recurrent_hidden_state_size, device=device)
     eval_masks = torch.zeros(num_processes, 1, device=device)
 
-    while len(eval_episode_rewards) < 10:
+    while len(eval_episode_rewards) < nr_episodes:
         with torch.no_grad():
             _, action, _, eval_recurrent_hidden_states = actor_critic.act(
                 obs,
@@ -30,8 +30,11 @@ def evaluate(actor_critic, ob_rms, env_name, seed, num_processes, eval_log_dir,
                 eval_masks,
                 deterministic=True)
 
-        # Obser reward and next obs
-        obs, _, done, infos = eval_envs.step(action)
+        if discrete:
+            obs, reward, done, infos = eval_envs.step(action.squeeze())
+        else:
+            obs, reward, done, infos = eval_envs.step(action)
+        # obs, _, done, infos = eval_envs.step(action)
 
         eval_masks = torch.tensor(
             [[0.0] if done_ else [1.0] for done_ in done],
@@ -44,6 +47,6 @@ def evaluate(actor_critic, ob_rms, env_name, seed, num_processes, eval_log_dir,
 
     eval_envs.close()
 
-    print(" Evaluation using {} episodes: mean reward {:.5f}\n".format(
+    print("Evaluation using {} episodes: mean reward {:.5f}\n".format(
         len(eval_episode_rewards), np.mean(eval_episode_rewards)))
     return np.mean(eval_episode_rewards)
