@@ -92,7 +92,7 @@ def default_save_init(log_dir, save_dir, pruning=False):
     if save_dir is not None:
         save_dir = save_dir
     else:
-        save_dir = log_dir + "nets/"
+        save_dir = os.path.join(log_dir, "nets/")
     os.makedirs(save_dir)
     return save_dir
 
@@ -100,5 +100,5 @@ def default_save_init(log_dir, save_dir, pruning=False):
 def default_args_init(log_dir, args):
     args_file = ("pruning_" if args.pruning else "") + "args.json"
     with open(log_dir + args_file, 'w')  as file:
-        json.dump(vars(args), file,indent = 4, sort_keys = True)
+        json.dump(vars(args), file, indent=4, sort_keys=True)
     return log_dir + args_file

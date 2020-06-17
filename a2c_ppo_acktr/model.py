@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.utils.prune as prune
 import warnings
+
 warnings.simplefilter("ignore")
 
 from a2c_ppo_acktr.distributions import Bernoulli, Categorical, DiagGaussian
@@ -87,6 +88,21 @@ class Policy(nn.Module):
 
         return value, action_log_probs, dist_entropy, rnn_hxs
 
+    def prune_critic(self, ratios, dims):
+        self.base.prune_critic(ratios, dims)
+
+    def prune_actor(self, ratios, dims):
+        prune.ln_structured(self.dist.linear, "weight", amount=ratios[-1], n=1, dim=dims[-1])
+        self.base.prune_actor(ratios[:-1], dims[:-1])
+
+    def pruned_number(self):
+        total_base, pruned_base = self.base.pruned_number()
+        total_base += self.dist.linear.weight.numel()
+        try:
+            pruned_base += (1 - self.dist.linear.weight_mask).sum()
+        except AttributeError:
+            pass
+        return total_base, pruned_base
 
 class NNBase(nn.Module):
     def __init__(self, recurrent, recurrent_input_size, hidden_size):
@@ -237,6 +253,9 @@ class MLPBase(NNBase):
 
         return self.critic_linear(hidden_critic), hidden_actor, rnn_hxs
 
+    def prune_base(self, rations, dims):
+        raise NotImplementedError("prune_bae not implemented for non-conv networks")
+
     def prune_critic(self, ratios, dims):
         if len(ratios) != 3:
             raise ValueError("length of ratios not matching critic number of layers")
@@ -246,3 +265,22 @@ class MLPBase(NNBase):
         prune.ln_structured(self.critic[2], 'weight', amount=ratios[1], n=1, dim=dims[1])
         prune.ln_structured(self.critic_linear, "weight", amount=ratios[2], n=2, dim=dims[2])
 
+    def prune_actor(self, ratios, dims):
+        if len(ratios) != 2:
+            raise ValueError("length of ratios not matching critic number of layers")
+        if len(dims) != 2:
+            raise ValueError("length of ratios not matching critic number of layers")
+        prune.ln_structured(self.actor[0], "weight", amount=ratios[0], n=1, dim=dims[0])
+        prune.ln_structured(self.actor[2], "weight", amount=ratios[1], n=1, dim=dims[0])
+
+    def pruned_number(self):
+        layers = [self.critic[0], self.critic[2], self.critic_linear, self.actor[0], self.actor[2]]
+        total_numel = 0
+        total_pruned = 0
+        for l in layers:
+            total_numel += l.weight.numel()
+            try:
+                total_pruned += (1 - l.weight_mask).sum()
+            except AttributeError:
+                pass
+        return total_numel,total_pruned
