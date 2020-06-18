@@ -4,6 +4,7 @@ import os
 import time
 from collections import deque
 import json
+import copy
 
 import gym
 import numpy as np
@@ -39,7 +40,14 @@ parser.add_argument(
 parser.add_argument(
     '--prune-convergence-its',
     default=30,
+    type=int,
     help='iterations of no improvement to prune'
+)
+parser.add_argument(
+    '--ratio',
+    default=0.1,
+    type=float,
+    help='percentage of weights to prune every step'
 )
 prune_args = parser.parse_args()
 
@@ -58,7 +66,7 @@ def detect_best_path(save_dir):
             best_avg = avg
             best_path = filename
     assert (best_path is not None)
-    return os.path.join(save_dir, best_path)
+    return best_avg, os.path.join(save_dir, best_path)
 
 
 def init(prune_args):
@@ -73,14 +81,25 @@ def init(prune_args):
     os.makedirs(save_dir)
     threads_dir = os.path.join(log_dir, "logs/")
     os.makedirs(threads_dir)
-    return args_dict, log_dir, save_dir, threads_dir
+    eval_dir = os.path.join(log_dir, 'eval/')
+    os.makedirs(eval_dir)
+    return args_dict, log_dir, save_dir, threads_dir, eval_dir
 
 
-args, log_dir, save_dir, threads_dir = init(prune_args)
+def prune_net(actor_critic, prune_args, prune_round, num_prune_rounds):
+    if prune_round == 0:
+        actor_critic.prune_actor([prune_args.ratio] * 3, [0, 1, 1])
+        print("pruned actor")
+    if prune_round == 1:
+        actor_critic.prune_critic([prune_args.ratio] * 3, [0, 1, 1])
+        print("pruned critic")
+
+
+args, log_dir, save_dir, threads_dir, eval_log_dir = init(prune_args)
 print(log_dir)
 print(save_dir)
 print(threads_dir)
-model_path = detect_best_path(os.path.join(prune_args.init_dir, "nets/"))
+model_avg, model_path = detect_best_path(os.path.join(prune_args.init_dir, "nets/"))
 print(model_path)
 
 # set seeds and devices
@@ -96,10 +115,15 @@ device = torch.device("cuda:0" if args.cuda else "cpu")
 
 logger.configure(log_dir)
 
-eval_log_dir = log_dir + "_eval"
-
 envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                      args.gamma, threads_dir, device, False)
+
+
+def custom_loader(model_good, model_old):
+    # for
+    for lg, lo in zip(model_good.named_parameters(), model_old.named_parameters()):
+        lg[1].data = lo[1].data.clone()
+        print(lg[0], "    ", lo[0])
 
 
 def load_alg():
@@ -109,7 +133,12 @@ def load_alg():
         envs.observation_space.shape,
         envs.action_space,
         base_kwargs={'recurrent': args.recurrent_policy}).to(device)
-    actor_critic.load_state_dict(actor_critic_2.state_dict())
+    # print([l[0] for l in actor_critic_2.named_parameters()])
+    # print([l[0] for l in actor_critic_2.named_parameters()])
+    custom_loader(actor_critic, actor_critic_2)
+    # print(actor_critic.dist.linear.weight)
+    # print(actor_critic_2.dist.fc_mean.weight)
+    del actor_critic_2
 
     agent = algo.PPO(
         actor_critic,
@@ -151,9 +180,12 @@ median_rewards = []
 nr_episodes = []
 times = []
 num_total_steps = []
+prune_ratios = []
+converged_scores = []
 log_dict = {"min_rewards": min_rewards, "max_rewards": max_rewards,
             "mean_rewards": mean_rewards, "median_rewards": median_rewards,
-            "nr_episodes": nr_episodes, "times": times, "num_total_steps": num_total_steps}
+            "nr_episodes": nr_episodes, "times": times, "num_total_steps": num_total_steps,
+            "prune_ratio": prune_ratios, "converged_score": converged_scores}
 
 # init convergence checks and other useful variables
 prunable_params = actor_critic.pruned_number()[0]
@@ -162,17 +194,23 @@ best_med = -1e6
 since_improve = 0
 solved = 0
 epochs = int(args.num_env_steps) // args.num_steps // args.num_processes
+j = 0
 
-prune_round = 0 # 0 for actor, 1 for critic, 3 for base for iterative pruning
+# pruning parameters
+prune_round = 0  # 0 for actor, 1 for critic, 3 for base for iterative pruning
 if actor_critic.base.__class__ == MLPBase:
     num_prune_rounds = 2  # only actor and critic
 else:
     num_prune_rounds = 3  # actor, critic and base
+prune_net(actor_critic, prune_args, prune_round, num_prune_rounds)
 
-actor_critic.prune_actor([0, 1, 1], [1, 1, 1])
-quit()
-for j in range(1, epochs + 1):
+prune_round += 1
+current_pruned = actor_critic.pruned_number()[1].cpu().item()
+prune_ratios.append(current_pruned / prunable_params)
+converged_scores.append(model_avg)
 
+while True:
+    j += 1
     if args.use_linear_lr_decay:
         # decrease learning rate linearly
         utils.update_linear_schedule(
@@ -222,9 +260,9 @@ for j in range(1, epochs + 1):
         end_time = time.time()
         s_total = end_time - abs_start
         print(
-            "Updates(epochs) {}, num timesteps {}, elapsed {:01}:{:02}:{:02.2f} epoch seconds {} \n Last {} training episodes: "
-            "mean/median reward {:.1f}/{:.1f},min/max reward {:.1f}/{:.1f}\n "
-                .format(j, total_num_steps,
+            "Updates(epochs) {}, num timesteps {}, pruned ratio {:.3f} elapsed {:01}:{:02}:{:02.2f} epoch seconds {:.3f} \n"
+            "Last {} training episodes: mean/median reward {:.1f}/{:.1f},min/max reward {:.1f}/{:.1f}\n "
+                .format(j, total_num_steps, current_pruned / prunable_params,
                         int(s_total // 3600), int(s_total % 3600 // 60), s_total % 60,
                         end_time - start_time, len(episode_rewards),
                         np.mean(episode_rewards), np.median(episode_rewards),
@@ -262,22 +300,44 @@ for j in range(1, epochs + 1):
     if worse:
         since_improve += 1
         if since_improve > prune_args.prune_convergence_its:
-            current_pruned = actor_critic.pruned_number()[1].cpu().item()
-
-            print("Net density: {} out of {} prunable converged".format(current_pruned,prunable_params))
+            prune_ratios.append(current_pruned)
+            converged_scores.append(np.mean(episode_rewards))
+            print("Net density: {} out of {} prunable converged".format(current_pruned, prunable_params))
             print("No improvements in {} iterations, best average is {}, best median is {}, pruning"
                   .format(since_improve, best_avg, best_med))
-            save_path = "{}it{}_val{:.1f}_c.pth".format(save_dir, j, np.mean(episode_rewards))
-            print("Saved final model at {}".format(save_path))
-            torch.save([actor_critic, getattr(utils.get_vec_normalize(envs), 'ob_rms', None)], save_path)
+            ob_rms = utils.get_vec_normalize(envs).ob_rms
+            pre_prune_eval = evaluate(actor_critic, ob_rms, args.env_name, args.seed, args.num_processes, eval_log_dir,
+                                      device,deterministic=False)
 
-            if prune_args.prune_together:
-                pass
-            else:
-                pass
-            with open(save_dir + "it_{}_log.json".format(j), "w") as file:
+            save_path = "{}it{}_pruned{:.3f}_val{:.1f}_pre.pth".format(save_dir, j, current_pruned / prunable_params,
+                                                                       pre_prune_eval)
+            print("Saved pruned model at pre pruning at {}".format(save_path))
+            torch.save([actor_critic, getattr(utils.get_vec_normalize(envs), 'ob_rms', None)], save_path)
+            with open(save_dir + "it_{}_log_pre.json".format(j), "w") as file:
                 json.dump(log_dict, file)
 
+            prune_net(actor_critic, prune_args, prune_round, num_prune_rounds)
+            prune_round = (prune_round + 1) % num_prune_rounds
+
+            post_prune_eval = evaluate(actor_critic, ob_rms, args.env_name, args.seed, args.num_processes, eval_log_dir,
+                                       device, deterministic=False)
+            save_path = "{}it{}_pruned{:.3f}_val{:.1f}_post.pth".format(save_dir, j, current_pruned / prunable_params,
+                                                                        post_prune_eval)
+            print("Saved pruned model at post pruning at {}".format(save_path))
+            torch.save([actor_critic, getattr(utils.get_vec_normalize(envs), 'ob_rms', None)], save_path)
+            with open(save_dir + "it_{}_log_pre.json".format(j), "w") as file:
+                json.dump(log_dict, file)
+
+            since_improve = 0
+            best_avg = -1e6
+            best_med = -1e6
+            episode_rewards.clear()
+            if actor_critic.pruned_number()[1].cpu().item() == current_pruned:
+                print("Cant prune further with this ratio")
+                prune_args.ratio *= 2
+            current_pruned = actor_critic.pruned_number()[1].cpu().item()
+            if current_pruned /  prunable_params > 0.99:
+                quit()
     # if (args.eval_interval is not None and len(episode_rewards) > 1
     #         and j % args.eval_interval == 0):
     #     ob_rms = utils.get_vec_normalize(envs).ob_rms

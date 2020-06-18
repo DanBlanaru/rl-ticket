@@ -92,7 +92,10 @@ class Policy(nn.Module):
         self.base.prune_critic(ratios, dims)
 
     def prune_actor(self, ratios, dims):
+        # if type(self.dist) is Categorical:
         prune.ln_structured(self.dist.linear, "weight", amount=ratios[-1], n=1, dim=dims[-1])
+        # if type(self.dist) is DiagGaussian:
+        # prune.ln_structured(self.dist.fc_mean, "weight", amount=ratios[-1], n=1, dim=dims[-1])
         self.base.prune_actor(ratios[:-1], dims[:-1])
 
     def pruned_number(self):
