@@ -33,11 +33,6 @@ def main():
     torch.set_num_threads(1)
     device = torch.device("cuda:0" if args.cuda else "cpu")
 
-    # if args.cuda and torch.cuda.is_available() and args.cuda_deterministic:
-    #     torch.backends.cudnn.benchmark = False
-    #     torch.backends.cudnn.deterministic = True
-
-    # log_dir = os.path.expanduser(args.log_dir)
     log_dir = utils.default_log_init(args.log_dir, args.env_name)
     save_dir = utils.default_save_init(log_dir, args.save_dir)
     args_file = utils.default_args_init(log_dir, args)
@@ -48,9 +43,7 @@ def main():
 
     print(log_dir)
 
-    # utils.cleanup_log_dir(log_dir)
     eval_log_dir = log_dir + "_eval"
-    # utils.cleanup_log_dir(eval_log_dir)
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                          args.gamma, threads_dir, device, False)
     action_sample = envs.action_space.sample()
@@ -80,37 +73,6 @@ def main():
 
     print(actor_critic.num_params)
 
-    # if args.algo == 'a2c':
-    #     agent = algo.A2C_ACKTR(
-    #         actor_critic,
-    #         args.value_loss_coef,
-    #         args.entropy_coef,
-    #         lr=args.lr,
-    #         eps=args.eps,
-    #         alpha=args.alpha,
-    #         max_grad_norm=args.max_grad_norm)
-    # elif args.algo == 'ppo':
-
-    # elif args.algo == 'acktr':
-    #     agent = algo.A2C_ACKTR(
-    #         actor_critic, args.value_loss_coef, args.entropy_coef, acktr=True)
-    # if args.gail:
-    #     assert len(envs.observation_space.shape) == 1
-    #     discr = gail.Discriminator(
-    #         envs.observation_space.shape[0] + envs.action_space.shape[0], 100,
-    #         device)
-    #     file_name = os.path.join(
-    #         args.gail_experts_dir, "trajs_{}.pt".format(
-    #             args.env_name.split('-')[0].lower()))
-    #
-    #     expert_dataset = gail.ExpertDataset(
-    #         file_name, num_trajectories=4, subsample_frequency=20)
-    #     drop_last = len(expert_dataset) > args.gail_batch_size
-    #     gail_train_loader = torch.utils.data.DataLoader(
-    #         dataset=expert_dataset,
-    #         batch_size=args.gail_batch_size,
-    #         shuffle=True,
-    #         drop_last=drop_last)
 
     # init observations and rollouts
     obs = envs.reset()
@@ -178,42 +140,13 @@ def main():
                 rollouts.obs[-1], rollouts.recurrent_hidden_states[-1],
                 rollouts.masks[-1]).detach()
 
-        # if args.gail:
-        #     if j >= 10:
-        #         envs.venv.eval()
-        #
-        #     gail_epoch = args.gail_epoch
-        #     if j < 10:
-        #         gail_epoch = 100  # Warm up
-        #     for _ in range(gail_epoch):
-        #         discr.update(gail_train_loader, rollouts,
-        #                      utils.get_vec_normalize(envs)._obfilt)
-        #
-        #     for step in range(args.num_steps):
-        #         rollouts.rewards[step] = discr.predict_reward(
-        #             rollouts.obs[step], rollouts.actions[step], args.gamma,
-        #             rollouts.masks[step])
 
-        # training iteration
         rollouts.compute_returns(next_value, args.use_gae, args.gamma,
                                  args.gae_lambda, args.use_proper_time_limits)
 
         value_loss, action_loss, dist_entropy = agent.update(rollouts)
 
         rollouts.after_update()
-
-        # save for every interval-th episode or for the last epoch
-        # if (j % args.save_interval == 0 or j == epochs- 1) and save_dir != "":
-        #     save_path = os.path.join(save_dir, args.algo)
-        #     try:
-        #         os.makedirs(save_path)
-        #     except OSError:
-        #         pass
-        #
-        #     torch.save([actor_critic,
-        #                 getattr(utils.get_vec_normalize(envs), 'ob_rms', None)],
-        #                os.path.join(save_path, args.env_name + ".pt"))
-        #
 
 
 
@@ -238,14 +171,12 @@ def main():
             nr_episodes.append(total_num_steps)
             times.append(end_time - start_time)
             num_total_steps.append(total_num_steps)
-            # print(log_dict)
             start_time = end_time
 
         if (j % args.save_interval == 0 or j == epochs - 1) and save_dir != "":
             save_path = "{}it{}_val{:.1f}.pth".format(save_dir, j, np.mean(episode_rewards))
             torch.save([actor_critic, getattr(utils.get_vec_normalize(envs), 'ob_rms', None)], save_path)
             print("-------Saved at path {}-------\n".format(save_path))
-            # print(save_path+"it_{}_log.json")
             with open(save_dir+"it_{}_log.json".format(j),"w") as file:
                 json.dump(log_dict,file)
 

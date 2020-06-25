@@ -1,0 +1,9 @@
+{
+    "init_dir": "experiments/classic_001/Acrobot-v1/0",
+    "max_epochs": 1200,
+    "multirun": true,
+    "prune_convergence_its": 50,
+    "prune_together": true,
+    "ratio": 0.05,
+    "threshold": -499.0
+}

@@ -1,0 +1,16 @@
+Logging to experiments/classic_001/Pendulum-v0/2/pruning/0
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces

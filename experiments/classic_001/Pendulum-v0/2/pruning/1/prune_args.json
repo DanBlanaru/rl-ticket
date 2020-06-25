@@ -1,0 +1,9 @@
+{
+    "init_dir": "experiments/classic_001/Pendulum-v0/2",
+    "max_epochs": 1200,
+    "multirun": true,
+    "prune_convergence_its": 50,
+    "prune_together": true,
+    "ratio": 0.05,
+    "threshold": -1500.0
+}

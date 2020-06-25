@@ -1,0 +1,9 @@
+{
+    "init_dir": "experiments/classic_001/MountainCarContinuous-v0/2",
+    "max_epochs": 1200,
+    "multirun": true,
+    "prune_convergence_its": 50,
+    "prune_together": false,
+    "ratio": 0.1,
+    "threshold": 0.0
+}

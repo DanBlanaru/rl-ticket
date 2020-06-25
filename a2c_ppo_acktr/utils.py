@@ -1,7 +1,9 @@
 import glob
 import os
 import json
-
+import re
+import torch.nn.utils.prune
+import argparse
 import torch
 import torch.nn as nn
 
@@ -102,3 +104,80 @@ def default_args_init(log_dir, args):
     with open(log_dir + args_file, 'w')  as file:
         json.dump(vars(args), file, indent=4, sort_keys=True)
     return log_dir + args_file
+
+
+def detect_best_run(game_dir):
+    number_finder = re.compile('([-+]?\d*[.,]?\d)')
+    best_avg = -1e8
+    best_path = None
+    best_seed = 0
+    for seed_name in os.listdir(game_dir):
+        save_dir = os.path.join(game_dir, seed_name, "nets")
+        for filename in os.listdir(save_dir):
+            basename, extention = os.path.splitext(filename)
+            if extention != ".pth":
+                continue
+            numbers = (number_finder.findall(basename))
+            avg = float(numbers[-1])
+            it = int(numbers[0])
+            if avg > best_avg:
+                best_avg = avg
+                #                 print(filename)
+                #                 print(numbers)
+                best_path = os.path.join(save_dir, "it_{}_log.json".format(it))
+                best_seed = int(seed_name)
+    #                 print(best_path)
+    assert (best_path is not None)
+    return str(best_seed)
+
+
+def detect_best_path(save_dir):
+    number_finder = re.compile('([-+]?\d*[.,]?\d)')
+    best_avg = -1e8
+    best_path = None
+    for filename in os.listdir(save_dir):
+        basename, extention = os.path.splitext(filename)
+        if extention != ".pth":
+            continue
+        avg = float(number_finder.findall(basename)[-1])
+
+        if avg > best_avg:
+            best_avg = avg
+            best_path = filename
+    assert (best_path is not None)
+    return best_avg, os.path.join(save_dir, best_path)
+
+
+def prune_folders_init(prune_args):
+    base_dir = prune_args.init_dir
+    args_file = os.path.join(base_dir, 'args.json')
+    with open(args_file, "r") as fp:
+        args_dict = argparse.Namespace(**json.load(fp))
+    log_dir = os.path.join(base_dir, "pruning")
+    log_dir = os.path.join(log_dir, str(experiment_number(log_dir)))
+    os.makedirs(log_dir)
+
+    prune_args_file = os.path.join(log_dir, "prune_args.json")
+    with open(prune_args_file, 'w') as fp:
+        json.dump(vars(prune_args), fp, indent=4, sort_keys=True)
+
+    save_dir = os.path.join(log_dir, "nets/")
+    os.makedirs(save_dir)
+    threads_dir = os.path.join(log_dir, "logs/")
+    os.makedirs(threads_dir)
+    eval_dir = os.path.join(log_dir, 'eval/')
+    os.makedirs(eval_dir)
+    return args_dict, log_dir, save_dir, threads_dir, eval_dir
+
+
+def prune_net(actor_critic, prune_args, prune_round, num_prune_rounds):
+    if prune_args.prune_together:
+        actor_critic.prune_actor([prune_args.ratio] * 3, [0, 1, 1])
+        actor_critic.prune_critic([prune_args.ratio] * 3, [0, 1, 1])
+    else:
+        if prune_round == 0:
+            actor_critic.prune_actor([prune_args.ratio] * 3, [0, 1, 1])
+            print("pruned actor")
+        if prune_round == 1:
+            actor_critic.prune_critic([prune_args.ratio] * 3, [0, 1, 1])
+            print("pruned critic")

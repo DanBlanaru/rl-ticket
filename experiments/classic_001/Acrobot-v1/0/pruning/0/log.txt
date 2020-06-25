@@ -1,0 +1,22 @@
+Logging to experiments/classic_001/Acrobot-v1/0/pruning/0
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
+Creating dummy env object to get spaces
