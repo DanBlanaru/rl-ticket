@@ -6,7 +6,7 @@ from a2c_ppo_acktr.envs import make_vec_envs
 
 
 def evaluate(actor_critic, ob_rms, env_name, seed, num_processes, eval_log_dir,
-             device, discrete=False, nr_episodes=10,deterministic = True):
+             device, action_sample=1, nr_episodes=10,deterministic = True):
     eval_envs = make_vec_envs(env_name, seed + num_processes, num_processes,
                               None, eval_log_dir, device, True)
 
@@ -30,7 +30,7 @@ def evaluate(actor_critic, ob_rms, env_name, seed, num_processes, eval_log_dir,
                 eval_masks,
                 deterministic=deterministic)
 
-        if discrete:
+        if type(action_sample) is int:
             obs, reward, done, infos = eval_envs.step(action.squeeze())
         else:
             obs, reward, done, infos = eval_envs.step(action)

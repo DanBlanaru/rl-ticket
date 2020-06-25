@@ -34,8 +34,7 @@ def get_args():
         '--weight-decay',
         type=float,
         default=0.0,
-        help='regularization factor'
-    )
+        help='regularization factor')
     parser.add_argument(
         '--alpha',
         type=float,

@@ -31,6 +31,13 @@ parser.add_argument(
     help='dir to start up from'
 )
 parser.add_argument(
+    '--multirun',
+    action = 'store_true',
+    default = False,
+    help = "if we have multiple runs in the directory"
+)
+
+parser.add_argument(
     '--prune-together',
     action='store_true',
     default=False,
@@ -49,8 +56,43 @@ parser.add_argument(
     type=float,
     help='percentage of weights to prune every step'
 )
+parser.add_argument(
+    '--max-epochs',
+    default = 10**8,
+    type=int,
+    help='number of maximum epochs to train'
+)
+parser.add_argument(
+    '--threshold',
+    default = -1e8,
+    type = float,
+    help = 'minumum reward to stop pruning if reached'
+)
 prune_args = parser.parse_args()
 
+def detect_best_run(game_dir):
+    number_finder = re.compile('([-+]?\d*[.,]?\d)')
+    best_avg = -1e8
+    best_path = None
+    best_seed = 0
+    for seed_name in os.listdir(game_dir):
+        save_dir = os.path.join(game_dir,seed_name,"nets")
+        for filename in os.listdir(save_dir):
+            basename, extention = os.path.splitext(filename)
+            if extention != ".pth":
+                continue
+            numbers = (number_finder.findall(basename))
+            avg = float(numbers[-1])
+            it = int(numbers[0])
+            if avg > best_avg:
+                best_avg = avg
+#                 print(filename)
+#                 print(numbers)
+                best_path = os.path.join(save_dir,"it_{}_log.json".format(it))
+                best_seed = int(seed_name)
+#                 print(best_path)
+    assert(best_path is not None)
+    return str(best_seed)
 
 def detect_best_path(save_dir):
     number_finder = re.compile('([-+]?\d*[.,]?\d)')
@@ -77,6 +119,11 @@ def init(prune_args):
     log_dir = os.path.join(base_dir, "pruning")
     log_dir = os.path.join(log_dir, str(utils.experiment_number(log_dir)))
     os.makedirs(log_dir)
+
+    prune_args_file = os.path.join(log_dir,"prune_args.json")
+    with open(prune_args_file,'w') as fp:
+        json.dump(vars(prune_args),fp,indent=4,sort_keys = True)
+
     save_dir = os.path.join(log_dir, "nets/")
     os.makedirs(save_dir)
     threads_dir = os.path.join(log_dir, "logs/")
@@ -87,13 +134,23 @@ def init(prune_args):
 
 
 def prune_net(actor_critic, prune_args, prune_round, num_prune_rounds):
-    if prune_round == 0:
+    if prune_args.prune_together:
         actor_critic.prune_actor([prune_args.ratio] * 3, [0, 1, 1])
-        print("pruned actor")
-    if prune_round == 1:
         actor_critic.prune_critic([prune_args.ratio] * 3, [0, 1, 1])
-        print("pruned critic")
+    else:
+        if prune_round == 0:
+            actor_critic.prune_actor([prune_args.ratio] * 3, [0, 1, 1])
+            print("pruned actor")
+        if prune_round == 1:
+            actor_critic.prune_critic([prune_args.ratio] * 3, [0, 1, 1])
+            print("pruned critic")
 
+
+
+
+if prune_args.multirun:
+    prune_args.init_dir = os.path.join(prune_args.init_dir,detect_best_run(prune_args.init_dir))
+print(prune_args.init_dir)
 
 args, log_dir, save_dir, threads_dir, eval_log_dir = init(prune_args)
 print(log_dir)
@@ -123,7 +180,6 @@ def custom_loader(model_good, model_old):
     # for
     for lg, lo in zip(model_good.named_parameters(), model_old.named_parameters()):
         lg[1].data = lo[1].data.clone()
-        print(lg[0], "    ", lo[0])
 
 
 def load_alg():
@@ -188,6 +244,7 @@ log_dict = {"min_rewards": min_rewards, "max_rewards": max_rewards,
             "prune_ratio": prune_ratios, "converged_score": converged_scores}
 
 # init convergence checks and other useful variables
+action_sample = envs.action_space.sample()
 prunable_params = actor_critic.pruned_number()[0]
 best_avg = -1e6
 best_med = -1e6
@@ -225,7 +282,9 @@ while True:
                 rollouts.masks[step])
 
         # Obser reward and next obs
-        if args.discrete:
+
+        
+        if type(action_sample) is int:
             obs, reward, done, infos = envs.step(action.squeeze())
         else:
             obs, reward, done, infos = envs.step(action)
@@ -307,7 +366,7 @@ while True:
                   .format(since_improve, best_avg, best_med))
             ob_rms = utils.get_vec_normalize(envs).ob_rms
             pre_prune_eval = evaluate(actor_critic, ob_rms, args.env_name, args.seed, args.num_processes, eval_log_dir,
-                                      device,deterministic=False)
+                                      device, deterministic=False, action_sample = action_sample)
 
             save_path = "{}it{}_pruned{:.3f}_val{:.1f}_pre.pth".format(save_dir, j, current_pruned / prunable_params,
                                                                        pre_prune_eval)
@@ -320,13 +379,19 @@ while True:
             prune_round = (prune_round + 1) % num_prune_rounds
 
             post_prune_eval = evaluate(actor_critic, ob_rms, args.env_name, args.seed, args.num_processes, eval_log_dir,
-                                       device, deterministic=False)
+                                       device, deterministic=False,action_sample = action_sample)
             save_path = "{}it{}_pruned{:.3f}_val{:.1f}_post.pth".format(save_dir, j, current_pruned / prunable_params,
                                                                         post_prune_eval)
             print("Saved pruned model at post pruning at {}".format(save_path))
             torch.save([actor_critic, getattr(utils.get_vec_normalize(envs), 'ob_rms', None)], save_path)
             with open(save_dir + "it_{}_log_pre.json".format(j), "w") as file:
                 json.dump(log_dict, file)
+
+
+            if np.mean(episode_rewards) < prune_args.threshold:
+                print("Reward under threshold")
+                quit()
+
 
             since_improve = 0
             best_avg = -1e6
@@ -336,8 +401,18 @@ while True:
                 print("Cant prune further with this ratio")
                 prune_args.ratio *= 2
             current_pruned = actor_critic.pruned_number()[1].cpu().item()
-            if current_pruned /  prunable_params > 0.99:
-                quit()
+        if current_pruned / prunable_params > 0.99 or j > prune_args.max_epochs:
+            pre_prune_eval = evaluate(actor_critic, ob_rms, args.env_name, args.seed, args.num_processes, eval_log_dir,
+                                      device, deterministic=False, action_sample = action_sample)
+
+            save_path = "{}it{}_pruned{:.3f}_val{:.1f}_final.pth".format(save_dir, j, current_pruned / prunable_params,
+                                                                       pre_prune_eval)
+            print("Saved pruned model at pre pruning at {}".format(save_path))
+            torch.save([actor_critic, getattr(utils.get_vec_normalize(envs), 'ob_rms', None)], save_path)
+            with open(save_dir + "it_{}_final.json".format(j), "w") as file:
+                json.dump(log_dict, file)
+            quit()
+            
     # if (args.eval_interval is not None and len(episode_rewards) > 1
     #         and j % args.eval_interval == 0):
     #     ob_rms = utils.get_vec_normalize(envs).ob_rms

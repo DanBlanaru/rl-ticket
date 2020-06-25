@@ -53,7 +53,7 @@ def main():
     # utils.cleanup_log_dir(eval_log_dir)
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                          args.gamma, threads_dir, device, False)
-
+    action_sample = envs.action_space.sample()
     def init_alg():
         actor_critic = Policy(
             envs.observation_space.shape,
@@ -155,7 +155,7 @@ def main():
                     rollouts.masks[step])
 
             # Obser reward and next obs
-            if args.discrete:
+            if type(action_sample) is int:
                 obs, reward, done, infos = envs.step(action.squeeze())
             else:
                 obs, reward, done, infos = envs.step(action)
