@@ -110,3 +110,5 @@ trained_models/
 /exp_ilya/
 /notebooks/
 /notebooks/
+/.ipynb_checkpoints/
+/.idea/
