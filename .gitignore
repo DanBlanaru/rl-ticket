@@ -104,11 +104,9 @@ trained_models/
 .fuse_hidden*
 /old/
 /old_exp/
-/old/
 /exp_final/
 /exp_final_backup/
 /exp_ilya/
-/notebooks/
 /notebooks/
 /.ipynb_checkpoints/
 /.idea/
